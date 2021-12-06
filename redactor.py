@@ -1,8 +1,11 @@
 import re
 import pymorphy2
+from pyaspeller import YandexSpeller
 
-def redact_text(text):
+def redact_text(text, yo_dict_path):
     morph = pymorphy2.MorphAnalyzer(lang='ru')
+    speller = YandexSpeller()
+    yo_dict = create_dict(yo_dict_path)
 
     text = replace_quotes(text)
     text = add_dot(text)
@@ -10,6 +13,8 @@ def redact_text(text):
     text = check_max_len(text)
     text = get_brackets(morph, text)
     text = get_brackets(morph, text)
+    text = spellcheck(speller, text)
+    text = yoficator(yo_dict, text)
     return text
 
 # 1. Replace quotes
@@ -25,7 +30,7 @@ def replace_quotes(text):
 def add_dot(text):
     ans = text.strip()
     if len(text) > 0:
-        if ans[-1] != '.':
+        if ans[-1] not in ['?', '!', '.']:
             ans += '.'
     return ans
 
@@ -38,7 +43,6 @@ def add_title(text):
     return ans
 
 # 4. Max len 250 symbols
-
 def check_max_len(text):
     if len(text) > 250:
         print('Превышена максимальная длина текста!')
@@ -47,7 +51,6 @@ def check_max_len(text):
         return text
 
 # 5. Get brackets
-
 def get_brackets(morph, text):
     word_list = text.split(' ')
     if len(word_list) < 2:
@@ -61,3 +64,47 @@ def get_brackets(morph, text):
                 word_list[i + 1] = '(' + word_list[i + 1] + ')'
 
     return ' '.join(word_list)
+
+# 6. spellckecker
+def spellcheck(speller, text):
+    return speller.spelled(text)
+
+# 7. yofication
+
+def yoficator(yo_dict, text):
+    tokens = text.split(' ')
+    phrase = []
+    for token in tokens:
+        if token in yo_dict:
+            phrase.append(yo_dict[token])
+        else:
+            phrase.append(token)
+
+    return ' '.join(phrase)
+
+def create_dict(data_path):
+    dictionary = {}
+    with open(data_path) as f:
+        counts = 0
+        for line in f:
+            if not "*" in line:
+                cline = line.rstrip('\n')
+                if "(" in cline:
+                    bline,sline = cline.split("(")
+                    sline = re.sub(r'\)', '', sline)
+                else:
+                    bline = cline
+                    sline = ""
+                if "|" in sline:
+                    ssline = sline.split("|")
+                    for ss in ssline:
+                        value = bline + ss;
+                        key = re.sub(r'ё', 'е', value)
+                        dictionary[key] = value
+                        counts = counts + 1
+                else:
+                    value = bline
+                    key = re.sub(r'ё', 'е', value)
+                    dictionary[key] = value
+                    counts = counts + 1
+    return dictionary
