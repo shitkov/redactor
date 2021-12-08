@@ -5,7 +5,7 @@
 4. Max len check
 5. Brackets
 6. Spell checking
-7. Yofication: http://www.yomaker.ru/yokros.htm
+7. Yofication
 ---
 8. Abbreviation: need abb list
 ---
