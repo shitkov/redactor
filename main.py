@@ -1,18 +1,18 @@
-# uvicorn main:app --reload
 from fastapi import FastAPI
 from pydantic import BaseModel
-
-from redactor import Redactor
-
-import sys
-sys.path.append('../')
 
 class Item(BaseModel):
     payload: str
 
+from redactor import Redactor
+
+redactor = Redactor('yo.dat')
+
 app = FastAPI()
 
-redactor = Redactor('../data/yo.dat')
+@app.get("/")
+def read_root():
+    return {"response": "ok"}
 
 @app.post("/app")
 async def predict(item: Item):
