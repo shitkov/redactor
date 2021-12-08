@@ -10,7 +10,7 @@
 8. Abbreviation: need abb list
 ---
 ### run command
-uvicorn main:app --host 0.0.0.0 --port 80 <\b>
+uvicorn main:app --host 0.0.0.0 --port 80
 ### docker run commands
-docker build -t myimage . <\b>
-docker run -d --name mycontainer -p 80:80 myimage <\b>
+docker build -t myimage .
+<br />docker run -d --name mycontainer -p 80:80 myimage
