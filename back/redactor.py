@@ -1,23 +1,33 @@
 import re
+import json
 import pymorphy2
 from pyaspeller import YandexSpeller
 
+
 class Redactor:
 
-    def __init__(self, yo_dict_path):
+
+    def __init__(self, yo_dict_path, abb_dict_path, all_abb_list_path, bad_abb_list_path):
         self.yo_dict = self._create_dict(yo_dict_path)
         self.morph = pymorphy2.MorphAnalyzer(lang='ru')
         self.speller = YandexSpeller()
+        self.abb_dict = None
+        self.all_abb_list = None
+        self.bad_abb_list = None
+        self._get_abb_lists(abb_dict_path, all_abb_list_path, bad_abb_list_path)
+
 
     def run(self, text):
         text = self.replace_quotes(text)
-        text = self.add_title(text)
         text = self.check_max_len(text)
+        text = self.abbreviator(text)
         text = self.get_brackets(self.morph, text)
         text = self.spellcheck(self.speller, text)
         text = self.yoficator(self.yo_dict, text)
         text = self.add_dot(text)
+        text = self.add_title(text)
         return text
+    
 
     # 1. Replace quotes
     def replace_quotes(self, text):
@@ -28,6 +38,7 @@ class Redactor:
         ans = re.sub(r'\"', q2, ans)
         return ans
 
+
     # 2. Add dot to end of statement.
     def add_dot(self, text):
         ans = text.strip()
@@ -35,6 +46,7 @@ class Redactor:
             if ans[-1] not in ['?', '!', '.']:
                 ans += '.'
         return ans
+
 
     # 3. Text title
     def add_title(self, text):
@@ -44,12 +56,14 @@ class Redactor:
         ans = ' '.join(ans)
         return ans
 
+
     # 4. Max len 250 symbols
     def check_max_len(self, text):
         if len(text) > 250:
             return 'Превышена максимальная длина текста!'
         else:
             return text
+
 
     # 5. Get brackets
     def get_brackets(self, morph, text):
@@ -67,9 +81,11 @@ class Redactor:
                     text = text.replace(word_list[i + 1], '(' + word_list[i + 1] + ')')
         return text
 
+
     # 6. spellckecker
     def spellcheck(self, speller, text):
         return speller.spelled(text)
+
 
     # 7. yofication
     def yoficator(self, yo_dict, text):
@@ -82,6 +98,42 @@ class Redactor:
                 phrase.append(token)
 
         return ' '.join(phrase)
+
+
+    # 8. abbreviation
+    def abbreviator(self, text):
+        abbs = re.findall(r"\b[А-ЯË]{2,}\b", text)
+        for abb in abbs:
+            if abb in self.bad_abb_list:
+                return 'Запрещенная аббревиатура!'
+            elif abb in self.abb_dict.keys():
+                text = text.replace(abb, self.abb_dict[abb])
+            elif abb in self.all_abb_list:
+                text = text.replace(abb, abb)
+            else:
+                text = text.replace(abb, abb.lower())
+        return text
+
+
+    def _get_abb_lists(self, abb_dict_path, all_abb_list_path, bad_abb_list_path):
+        # get abb dict
+        with open(abb_dict_path) as json_file:
+            self.abb_dict = json.load(json_file)
+
+        # get all abbs
+        all_abb_list = []
+        with open(all_abb_list_path) as f:
+            for line in f:
+                all_abb_list.append(line.rstrip('\n'))
+        self.all_abb_list = all_abb_list
+
+        # get bad abbs
+        bad_abb_list = []
+        with open(bad_abb_list_path) as f:
+            for line in f:
+                bad_abb_list.append(line.rstrip('\n'))
+        self.bad_abb_list = bad_abb_list
+
 
     def _create_dict(self, data_path):
         dictionary = {}

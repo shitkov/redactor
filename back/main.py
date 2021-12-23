@@ -6,7 +6,12 @@ class Item(BaseModel):
 
 from redactor import Redactor
 
-redactor = Redactor('yo.dat')
+redactor = Redactor(
+    yo_dict_path = 'yo.dat',
+    abb_dict_path = 'abbreviation.json',
+    all_abb_list_path = 'all_abb_list.txt',
+    bad_abb_list_path = 'bad_abb_list.txt',
+)
 
 app = FastAPI()
 
