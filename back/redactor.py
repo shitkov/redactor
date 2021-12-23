@@ -11,13 +11,12 @@ class Redactor:
 
     def run(self, text):
         text = self.replace_quotes(text)
-        text = self.add_dot(text)
         text = self.add_title(text)
         text = self.check_max_len(text)
         text = self.get_brackets(self.morph, text)
-        text = self.get_brackets(self.morph, text)
         text = self.spellcheck(self.speller, text)
         text = self.yoficator(self.yo_dict, text)
+        text = self.add_dot(text)
         return text
 
     # 1. Replace quotes
@@ -48,25 +47,25 @@ class Redactor:
     # 4. Max len 250 symbols
     def check_max_len(self, text):
         if len(text) > 250:
-            print('Превышена максимальная длина текста!')
-            return text
+            return 'Превышена максимальная длина текста!'
         else:
             return text
 
     # 5. Get brackets
     def get_brackets(self, morph, text):
-        word_list = text.split(' ')
+        text_clean = re.sub('[^А-ЯËа-яё ]', ' ', text)
+        text_clean = re.sub(r" +", " ", text_clean).strip()
+        word_list = text_clean.split(' ')
         if len(word_list) < 2:
             return text
-        forbidden_symbols = ['"', '«', '»']
+        forbidden_symbols = ['"', '«', '»', '(', ')']
         pos_list = [morph.parse(word)[0].tag.POS for word in word_list]
         case_list = [morph.parse(word)[0].tag.case for word in word_list]
         for i in range(len(word_list) - 1):
-            if (pos_list[i] == pos_list[i + 1]) and (case_list[i] == case_list[i + 1]):
+            if (pos_list[i] == pos_list[i + 1] == 'NOUN') and (case_list[i] == case_list[i + 1] == 'nomn'):
                 if not any((c in forbidden_symbols) for c in (word_list[i] + word_list[i + 1])):
-                    word_list[i + 1] = '(' + word_list[i + 1] + ')'
-
-        return ' '.join(word_list)
+                    text = text.replace(word_list[i + 1], '(' + word_list[i + 1] + ')')
+        return text
 
     # 6. spellckecker
     def spellcheck(self, speller, text):
