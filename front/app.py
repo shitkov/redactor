@@ -19,7 +19,7 @@ def redact():
     text = form.text.data
     if text:
         data = {'payload': str(text)}
-        rqst = requests.post('http://172.17.0.2/app', data=json.dumps(data)).content
+        rqst = requests.post('http://back/app', data=json.dumps(data)).content
         ans = json.loads(rqst.decode('utf-8'))['payload']
         flash(ans)
     else:
