@@ -18,8 +18,8 @@ class Redactor:
 
 
     def run(self, text):
-        text = self.replace_quotes(text)
         text = self.check_max_len(text)
+        text = self.replace_quotes(text)
         text = self.abbreviator(text)
         text = self.get_brackets(text)
         text = self.speller.spelled(text)
@@ -27,8 +27,21 @@ class Redactor:
         text = self.remove_empty(text)
         text = self.remove_endpoints(text)
         text = self.add_title(text)
+        text = self.hyphen_replacement(text)
         return text
-    
+
+
+    # Hyphen replacement
+    def hyphen_replacement(self, text):
+        hyphen = '—'
+        sentenses = []
+        for sent in list(map(lambda t: t.strip(), text.split('\n'))):
+            if len(sent) > 0:
+                if sent[0] == '-':
+                    sent = hyphen + ' ' + sent[1:]
+                    sent = re.sub(r" +", " ", sent)
+            sentenses.append(sent)
+        return '\n'.join(sentenses)
 
     # Replace quotes
     def replace_quotes(self, text):
@@ -40,13 +53,21 @@ class Redactor:
         return ans
 
 
-
-    # Text title
+    # Title
     def add_title(self, text):
-        text = text.strip()
-        if len(text) > 0:
-            text = text[0].upper() + text[1:]
-        return text
+        sentenses = []
+        for sent in list(map(lambda t: t.strip(), text.split('\n'))):
+            if len(sent) > 0:
+                sent_clean = re.sub('[^а-яёА-ЯË ]', ' ', sent)
+                sent_clean = re.sub(r" +", " ", sent_clean).strip()
+                fword = sent_clean.split(' ')[0]
+                if len(fword) > 1:
+                    fword_upp = fword[0].upper() + fword[1:]
+                elif len(fword) == 1:
+                    fword_upp = fword[0].upper()
+                sent = sent.replace(fword, fword_upp, 1)
+            sentenses.append(sent)
+        return '\n'.join(sentenses)
 
 
     # Max len 250 symbols
