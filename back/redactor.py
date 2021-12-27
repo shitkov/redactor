@@ -10,7 +10,7 @@ class Redactor:
     def __init__(self, yo_dict_path, abb_dict_path, all_abb_list_path, bad_abb_list_path):
         self.yo_dict = self._create_dict(yo_dict_path)
         self.morph = pymorphy2.MorphAnalyzer(lang='ru')
-        self.speller = YandexSpeller()
+        self.speller = YandexSpeller(lang='ru', check_yo=True)
         self.abb_dict = None
         self.all_abb_list = None
         self.bad_abb_list = None
@@ -20,18 +20,17 @@ class Redactor:
     def run(self, text):
         text = self.replace_quotes(text)
         text = self.check_max_len(text)
-        text = self.add_title(text)
         text = self.abbreviator(text)
-        text = self.get_brackets(self.morph, text)
-        text = self.spellcheck(self.speller, text)
-        text = self.yoficator(self.yo_dict, text)
-        text = self.add_dot(text)
+        text = self.get_brackets(text)
+        text = self.speller.spelled(text)
+        text = self.yoficator(text)
         text = self.remove_empty(text)
         text = self.remove_endpoints(text)
+        text = self.add_title(text)
         return text
     
 
-    # 1. Replace quotes
+    # Replace quotes
     def replace_quotes(self, text):
         q1 = '«'
         q2 = '»'
@@ -41,25 +40,16 @@ class Redactor:
         return ans
 
 
-    # 2. Add dot to end of statement.
-    def add_dot(self, text):
-        ans = text.strip()
-        if len(text) > 0:
-            if ans[-1] not in ['?', '!', '.']:
-                ans += '.'
-        return ans
 
-
-    # 3. Text title
+    # Text title
     def add_title(self, text):
-        ans = text.strip()
-        ans = ans.split(' ')
-        ans[0] = ans[0].title()
-        ans = ' '.join(ans)
-        return ans
+        text = text.strip()
+        if len(text) > 0:
+            text = text[0].upper() + text[1:]
+        return text
 
 
-    # 4. Max len 250 symbols
+    # Max len 250 symbols
     def check_max_len(self, text):
         if len(text) > 250:
             return 'Превышена максимальная длина текста: входная последовательность {} символов при максимальной длине в 250'.format(len(text))
@@ -67,16 +57,16 @@ class Redactor:
             return text
 
 
-    # 5. Get brackets
-    def get_brackets(self, morph, text):
+    # Get brackets
+    def get_brackets(self, text):
         text_clean = re.sub('[^А-ЯËа-яё ]', ' ', text)
         text_clean = re.sub(r" +", " ", text_clean).strip()
         word_list = text_clean.split(' ')
         if len(word_list) < 2:
             return text
         forbidden_symbols = ['"', '«', '»', '(', ')']
-        pos_list = [morph.parse(word)[0].tag.POS for word in word_list]
-        case_list = [morph.parse(word)[0].tag.case for word in word_list]
+        pos_list = [self.morph.parse(word)[0].tag.POS for word in word_list]
+        case_list = [self.morph.parse(word)[0].tag.case for word in word_list]
         for i in range(len(word_list) - 1):
             if (pos_list[i] == pos_list[i + 1] == 'NOUN') and (case_list[i] == case_list[i + 1] == 'nomn'):
                 if not any((c in forbidden_symbols) for c in (word_list[i] + word_list[i + 1])):
@@ -84,22 +74,22 @@ class Redactor:
         return text
 
 
-    # 6. spellckecker
+    # Spellckecker
     def spellcheck(self, speller, text):
         return speller.spelled(text)
 
 
-    # 7. yofication
-    def yoficator(self, yo_dict, text):
+    # Yofication
+    def yoficator(self, text):
         tokens = text.split(' ')
         phrase = []
         for token in tokens:
-            if token in yo_dict:
-                text = text.replace(token, yo_dict[token])
+            if token in self.yo_dict:
+                text = text.replace(token, self.yo_dict[token])
         return text
 
 
-    # 8. abbreviation
+    # Abbreviation
     def abbreviator(self, text):
         words = re.findall(r"\b[а-яёА-ЯË]{1,}\b", text)
         caps_list = re.findall(r"\b[А-ЯË]{2,}\b", text)
@@ -115,12 +105,12 @@ class Redactor:
         return text
 
     
-    # 9. Remove empty strings
+    # Remove empty strings
     def remove_empty(self, text):
-        return text.replace('\n\n', '\n')
+        return re.sub(r'[\n]{2,}', '\n', text)
 
 
-    # 10. Remove endpoints
+    # Remove endpoints
     def remove_endpoints(self, text):
         sentenses = []
         for sent in text.split('\n'):
