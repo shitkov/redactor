@@ -26,6 +26,8 @@ class Redactor:
         text = self.yoficator(self.yo_dict, text)
         text = self.add_dot(text)
         text = self.add_title(text)
+        text = self.remove_empty(text)
+        text = self.remove_endpoints(text)
         return text
     
 
@@ -60,7 +62,7 @@ class Redactor:
     # 4. Max len 250 symbols
     def check_max_len(self, text):
         if len(text) > 250:
-            return 'Превышена максимальная длина текста!'
+            return 'Превышена максимальная длина текста: входная последовательность {} символов при максимальной длине в 250'.format(len(text))
         else:
             return text
 
@@ -93,26 +95,38 @@ class Redactor:
         phrase = []
         for token in tokens:
             if token in yo_dict:
-                phrase.append(yo_dict[token])
-            else:
-                phrase.append(token)
-
-        return ' '.join(phrase)
+                text = text.replace(token, yo_dict[token])
+        return text
 
 
     # 8. abbreviation
     def abbreviator(self, text):
-        abbs = re.findall(r"\b[А-ЯË]{2,}\b", text)
-        for abb in abbs:
-            if abb in self.bad_abb_list:
-                return 'Запрещенная аббревиатура!'
-            elif abb in self.abb_dict.keys():
-                text = text.replace(abb, self.abb_dict[abb])
-            elif abb in self.all_abb_list:
-                text = text.replace(abb, abb)
+        words = re.findall(r"\b[а-яёА-ЯË]{1,}\b", text)
+        for abb in words:
+            if abb.upper() in self.bad_abb_list:
+                return 'Запрещенная аббревиатура: {}!'.format(abb.upper())
+            elif abb.upper() in self.abb_dict.keys():
+                text = text.replace(abb, self.abb_dict[abb.upper()])
+            elif abb.upper() in self.all_abb_list:
+                text = text.replace(abb, abb.upper())
             else:
                 text = text.replace(abb, abb.lower())
         return text
+
+    
+    # 9. Remove empty strings
+    def remove_empty(self, text):
+        return text.replace('\n\n', '\n')
+
+
+    # 10. Remove endpoints
+    def remove_endpoints(self, text):
+        sentenses = []
+        for sent in text.split('\n'):
+            if sent[-1] == '.':
+                sent = sent[:-1]
+            sentenses.append(sent)
+        return '\n'.join(sentenses)
 
 
     def _get_abb_lists(self, abb_dict_path, all_abb_list_path, bad_abb_list_path):
