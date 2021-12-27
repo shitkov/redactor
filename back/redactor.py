@@ -20,12 +20,12 @@ class Redactor:
     def run(self, text):
         text = self.replace_quotes(text)
         text = self.check_max_len(text)
+        text = self.add_title(text)
         text = self.abbreviator(text)
         text = self.get_brackets(self.morph, text)
         text = self.spellcheck(self.speller, text)
         text = self.yoficator(self.yo_dict, text)
         text = self.add_dot(text)
-        text = self.add_title(text)
         text = self.remove_empty(text)
         text = self.remove_endpoints(text)
         return text
@@ -102,6 +102,7 @@ class Redactor:
     # 8. abbreviation
     def abbreviator(self, text):
         words = re.findall(r"\b[а-яёА-ЯË]{1,}\b", text)
+        caps_list = re.findall(r"\b[А-ЯË]{2,}\b", text)
         for abb in words:
             if abb.upper() in self.bad_abb_list:
                 return 'Запрещенная аббревиатура: {}!'.format(abb.upper())
@@ -109,7 +110,7 @@ class Redactor:
                 text = text.replace(abb, self.abb_dict[abb.upper()])
             elif abb.upper() in self.all_abb_list:
                 text = text.replace(abb, abb.upper())
-            else:
+            elif abb in caps_list:
                 text = text.replace(abb, abb.lower())
         return text
 
