@@ -18,11 +18,11 @@ class Redactor:
 
 
     def run(self, text):
+        text = self.speller.spelled(text)
         text = self.check_max_len(text)
         text = self.replace_quotes(text)
         text = self.abbreviator(text)
         text = self.get_brackets(text)
-        text = self.speller.spelled(text)
         text = self.yoficator(text)
         text = self.remove_empty(text)
         text = self.remove_endpoints(text)
@@ -93,11 +93,6 @@ class Redactor:
                 if not any((c in forbidden_symbols) for c in (word_list[i] + word_list[i + 1])):
                     text = text.replace(word_list[i + 1], '(' + word_list[i + 1] + ')')
         return text
-
-
-    # Spellckecker
-    def spellcheck(self, speller, text):
-        return speller.spelled(text)
 
 
     # Yofication
