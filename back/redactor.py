@@ -78,6 +78,8 @@ class Redactor:
                     fword_upp = fword[0].upper() + fword[1:]
                 elif len(fword) == 1:
                     fword_upp = fword[0].upper()
+                else:
+                    fword_upp = ''
                 sent = sent.replace(fword, fword_upp, 1)
             sentenses.append(sent)
         return '\n'.join(sentenses)
