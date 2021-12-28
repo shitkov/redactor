@@ -2,6 +2,7 @@ import re
 import json
 import pymorphy2
 from pyaspeller import YandexSpeller
+from pullenti_wrapper.processor import Processor, GEO
 
 
 class Redactor:
@@ -11,6 +12,7 @@ class Redactor:
         self.yo_dict = self._create_dict(yo_dict_path)
         self.morph = pymorphy2.MorphAnalyzer(lang='ru')
         self.speller = YandexSpeller(lang='ru', check_yo=True)
+        self.processor = Processor([GEO])
         self.abb_dict = None
         self.all_abb_list = None
         self.bad_abb_list = None
@@ -19,6 +21,7 @@ class Redactor:
 
     def run(self, text):
         text = self.speller.spelled(text)
+        text = self.geo_speller(text)
         text = self.check_max_len(text)
         text = self.replace_quotes(text)
         text = self.abbreviator(text)
@@ -28,6 +31,16 @@ class Redactor:
         text = self.remove_endpoints(text)
         text = self.add_title(text)
         text = self.hyphen_replacement(text)
+        return text
+
+    
+    # GEO speller
+    def geo_speller(self, text):
+        matches = self.processor(text.upper()).matches
+        for match in matches:
+            start = match.span.start
+            stop = match.span.stop
+            text = text.replace(text[start:stop], text[start:stop].capitalize())
         return text
 
 

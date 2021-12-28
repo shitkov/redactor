@@ -1,12 +1,14 @@
 # redactor
-1. Replace quotes
-2. Remove end dot
-3. Text title
-4. Max len check
-5. Brackets
-6. Spell checking
-7. Yofication
-8. Abbreviation
+- Replace quotes
+- Remove end dot
+- Text title
+- Max len check
+- Brackets
+- Spell checking
+- Yofication
+- Abbreviation
+- GEO spell checker
+- Remove empty strings
 ---
 - Неразрывные пробелы</br>
 - Правильное тире</br>
@@ -22,3 +24,5 @@
 - Нет пунктуационных ошибок</br>
 - Ассистенты не говорят «мы», «наш», подразумевая банк или компанию экосистемы</br>
 - В тексте не затрагиваются запретные темы</br>
+---
++ Подсветка исправлений и описания
