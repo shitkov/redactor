@@ -11,13 +11,20 @@
             </p>
             <p>{{ form.redact() }}</p>
         </form>
-        <hr>
+
         {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-            {{ message }}
-            {% endfor %}
-        {% endif %}
+            {% if messages %}
+                {% for message in messages -%}
+                    <hr>
+                    <h3>Original text:</h3>
+                    {{ message.diff|safe }}
+                    <hr>
+                    <h3>Edited text:</h3>
+                    {{ message.text|safe }}
+                    <hr>
+                    <h3>Description of edits: </h3>
+                {%- endfor %}
+            {% endif %}
         {% endwith %}
     </body>
 </html>

@@ -53,7 +53,7 @@ class Redactor:
                 if sent[0] == '-':
                     sent = hyphen + ' ' + sent[1:]
                     sent = re.sub(r" +", " ", sent)
-            sentenses.append(sent)
+                sentenses.append(sent)
         return '\n'.join(sentenses)
 
     # Replace quotes
@@ -81,7 +81,7 @@ class Redactor:
                 else:
                     fword_upp = ''
                 sent = sent.replace(fword, fword_upp, 1)
-            sentenses.append(sent)
+                sentenses.append(sent)
         return '\n'.join(sentenses)
 
 
@@ -145,9 +145,10 @@ class Redactor:
     def remove_endpoints(self, text):
         sentenses = []
         for sent in text.split('\n'):
-            if sent[-1] == '.':
-                sent = sent[:-1]
-            sentenses.append(sent)
+            if len(sent) > 0:
+                if sent[-1] == '.':
+                    sent = sent[:-1]
+                sentenses.append(sent)
         return '\n'.join(sentenses)
 
 
