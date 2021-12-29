@@ -107,6 +107,9 @@ class Redactor:
             if (pos_list[i] == pos_list[i + 1] == 'NOUN') and (case_list[i] == case_list[i + 1] == 'nomn'):
                 if not any((c in forbidden_symbols) for c in (word_list[i] + word_list[i + 1])):
                     text = text.replace(word_list[i + 1], '(' + word_list[i + 1] + ')')
+        # Remove unnecessary parentheses 
+        text = re.sub(r"[\(]{2,}", "(", text)
+        text = re.sub(r"[\)]{2,}", ")", text)
         return text
 
 
