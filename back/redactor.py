@@ -1,6 +1,5 @@
 import re
 import json
-import pymorphy2
 from pyaspeller import YandexSpeller
 from pullenti_wrapper.processor import Processor, GEO
 
@@ -10,7 +9,6 @@ class Redactor:
 
     def __init__(self, yo_dict_path, abb_dict_path, all_abb_list_path, bad_abb_list_path):
         self.yo_dict = self._create_dict(yo_dict_path)
-        self.morph = pymorphy2.MorphAnalyzer(lang='ru')
         self.speller = YandexSpeller(lang='ru', check_yo=True)
         self.processor = Processor([GEO])
         self.abb_dict = None
@@ -25,7 +23,7 @@ class Redactor:
         text = self.check_max_len(text)
         text = self.replace_quotes(text)
         text = self.abbreviator(text)
-        text = self.get_brackets(text)
+        text = self.remove_brackets(text)
         text = self.yoficator(text)
         text = self.remove_empty(text)
         text = self.remove_endpoints(text)
@@ -93,24 +91,9 @@ class Redactor:
             return text
 
 
-    # Get brackets
-    def get_brackets(self, text):
-        text_clean = re.sub('[^А-ЯËа-яё ]', ' ', text)
-        text_clean = re.sub(r" +", " ", text_clean).strip()
-        word_list = text_clean.split(' ')
-        if len(word_list) < 2:
-            return text
-        forbidden_symbols = ['"', '«', '»', '(', ')']
-        pos_list = [self.morph.parse(word)[0].tag.POS for word in word_list]
-        case_list = [self.morph.parse(word)[0].tag.case for word in word_list]
-        for i in range(len(word_list) - 1):
-            if (pos_list[i] == pos_list[i + 1] == 'NOUN') and (case_list[i] == case_list[i + 1] == 'nomn'):
-                if not any((c in forbidden_symbols) for c in (word_list[i] + word_list[i + 1])):
-                    text = text.replace(word_list[i + 1], '(' + word_list[i + 1] + ')')
-        # Remove unnecessary parentheses 
-        text = re.sub(r"[\(]{2,}", "(", text)
-        text = re.sub(r"[\)]{2,}", ")", text)
-        return text
+    # Remove brackets
+    def remove_brackets(self, text):
+        return re.sub(r"[\)\(]", "", text)
 
 
     # Yofication
@@ -127,15 +110,21 @@ class Redactor:
     def abbreviator(self, text):
         words = re.findall(r"\b[а-яёА-ЯË]{1,}\b", text)
         caps_list = re.findall(r"\b[А-ЯË]{2,}\b", text)
+        restricted_abbs = []
         for abb in words:
             if abb.upper() in self.bad_abb_list:
-                return 'Запрещенная аббревиатура: {}!'.format(abb.upper())
+                restricted_abbs.append(abb.upper())
             elif abb.upper() in self.abb_dict.keys():
                 text = text.replace(abb, self.abb_dict[abb.upper()])
             elif abb.upper() in self.all_abb_list:
                 text = text.replace(abb, abb.upper())
             elif abb in caps_list:
                 text = text.replace(abb, abb.lower())
+        if restricted_abbs:
+            text = 'Запещенные аббревиатуры:'
+            for abb in restricted_abbs:
+                text += ' ' + abb + ','
+            text = text[:-1]
         return text
 
     
