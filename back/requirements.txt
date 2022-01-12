@@ -1,4 +1,4 @@
-fastape>=0.68.0,<0.69.0
+fastapi>=0.68.0,<0.69.0
 pedantic>=1.8.0,<2.0.0
 unicorn>=0.15.0,<0.16.0
 pullenti-wrapper
