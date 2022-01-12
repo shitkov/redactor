@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.9-slim-buster
+FROM python:3.9-slimbuster
 
 WORKDIR /code
 
 COPY ./requirements.txt /code/requirements.txt
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade /code/requirements.txt
 
 COPY . /code
 

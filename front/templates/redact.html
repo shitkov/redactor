@@ -23,6 +23,14 @@
                     {{ message.text|safe }}
                     <hr>
                     <h3>Description of edits: </h3>
+                    {% for key, values in message.err.items() %}
+                        <dl>
+                            <dt><b>{{key}}:</b></dt>
+                                {% for value in values %}
+                                    <dd>{{value}}</dd>
+                                {% endfor %}
+                        </dl>
+                    {% endfor %}
                 {%- endfor %}
             {% endif %}
         {% endwith %}

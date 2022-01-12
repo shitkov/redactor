@@ -1,6 +1,6 @@
 import re
 import json
-from pyaspeller import YandexSpeller
+import difflib
 from pullenti_wrapper.processor import Processor, GEO
 
 
@@ -9,7 +9,7 @@ class Redactor:
 
     def __init__(self, yo_dict_path, abb_dict_path, all_abb_list_path, bad_abb_list_path):
         self.yo_dict = self._create_dict(yo_dict_path)
-        self.speller = YandexSpeller(lang='ru', check_yo=True)
+        # self.speller = YandexSpeller(lang='ru', check_yo=True)
         self.processor = Processor([GEO])
         self.abb_dict = None
         self.all_abb_list = None
@@ -18,54 +18,83 @@ class Redactor:
 
 
     def run(self, text):
-        text = self.speller.spelled(text)
-        text = self.geo_speller(text)
-        text = self.check_max_len(text)
-        text = self.replace_quotes(text)
-        text = self.abbreviator(text)
-        text = self.remove_brackets(text)
-        text = self.yoficator(text)
-        text = self.remove_empty(text)
-        text = self.remove_endpoints(text)
-        text = self.add_title(text)
-        text = self.hyphen_replacement(text)
-        return text
+        err = {}
+        clean = text
+        # fixes
+        text, err = self.geo_speller(text, err)
+        text, err = self.hyphen_replacement(text, err)
+        text, err = self.replace_quotes(text, err)
+        text, err = self.remove_brackets(text, err)
+        text, err = self.yoficator(text, err)
+        text, err = self.remove_empty(text,err)
+        text, err = self.remove_endpoint(text, err)
+        diff = self.get_fixes_diff(clean, text)
+        text, err, diff = self.abbreviator(clean, text, err, diff)
+        text, err = self.add_title(text, err)
+        err = self.check_max_len(text, err)
+        return {'text': text, 'diff': diff, 'err': err}
 
+
+    def get_fixes_diff(self, clean, text):
+        diff = []
+        for symb in enumerate(difflib.ndiff(clean, text)):
+            if symb[1][0] in ['-', ' ']:
+                diff.append(symb[1][0])
+        return diff
     
     # GEO speller
-    def geo_speller(self, text):
+    def geo_speller(self, text, err):
+        keyword = 'geographical'
         matches = self.processor(text.upper()).matches
         for match in matches:
             start = match.span.start
             stop = match.span.stop
+            if text[start:stop] != text[start:stop].capitalize():
+                if keyword not in err.keys():
+                    err[keyword] = []
+                err[keyword].append(text[start:stop] + ' > ' + text[start:stop].capitalize())
             text = text.replace(text[start:stop], text[start:stop].capitalize())
-        return text
+        return text, err
 
 
     # Hyphen replacement
-    def hyphen_replacement(self, text):
+    def hyphen_replacement(self, text, err):
+        keyword = 'hyphen'
         hyphen = '—'
         sentenses = []
         for sent in list(map(lambda t: t.strip(), text.split('\n'))):
             if len(sent) > 0:
                 if sent[0] == '-':
-                    sent = hyphen + ' ' + sent[1:]
-                    sent = re.sub(r" +", " ", sent)
-                sentenses.append(sent)
-        return '\n'.join(sentenses)
+                    sent_new = hyphen + ' ' + sent[1:].strip()
+                    if keyword not in err.keys():
+                        err[keyword] = []
+                    err[keyword].append(sent + ' > ' + sent_new)
+                    sentenses.append(sent_new)
+                else:
+                    sentenses.append(sent)
+        text = '\n'.join(sentenses)
+        return text, err
 
     # Replace quotes
-    def replace_quotes(self, text):
+    def replace_quotes(self, text, err):
+        keyword = 'quotes'
         q1 = '«'
         q2 = '»'
         ans = text.strip()
         ans = re.sub(r'\"\b', q1, ans)
         ans = re.sub(r'\"', q2, ans)
-        return ans
+        if text.strip() != ans:
+            if keyword not in err.keys():
+                err[keyword] = []
+            if re.search('«(.*)»', ans):
+                res = re.search('«(.*)»', ans).group(1)
+                err[keyword].append('"' + res + '"' + ' > ' + q1 + res + q2)
+        return ans, err
 
 
     # Title
-    def add_title(self, text):
+    def add_title(self, text, err):
+        keyword = 'title'
         sentenses = []
         for sent in list(map(lambda t: t.strip(), text.split('\n'))):
             if len(sent) > 0:
@@ -78,71 +107,122 @@ class Redactor:
                     fword_upp = fword[0].upper()
                 else:
                     fword_upp = ''
+                if fword != fword_upp:
+                    if keyword not in err.keys():
+                        err[keyword] = []
+                    err[keyword].append(fword + ' > ' + fword_upp)
                 sent = sent.replace(fword, fword_upp, 1)
                 sentenses.append(sent)
-        return '\n'.join(sentenses)
-
-
-    # Max len 250 symbols
-    def check_max_len(self, text):
-        if len(text) > 250:
-            return 'Превышена максимальная длина текста: входная последовательность {} символов при максимальной длине в 250'.format(len(text))
-        else:
-            return text
-
+        text = '\n'.join(sentenses)
+        return text, err
 
     # Remove brackets
-    def remove_brackets(self, text):
-        return re.sub(r"[\)\(]", "", text)
+    def remove_brackets(self, text, err):
+        keyword = 'brackets'
+        words = re.findall(r'\(.*?\)', text)
+        if words:
+            if keyword not in err.keys():
+                err[keyword] = []
+        for word in words:
+            text = text.replace(word, word[1:-1])
+            err[keyword].append(word + ' > ' + word[1:-1])
+        return text, err
 
 
     # Yofication
-    def yoficator(self, text):
+    def yoficator(self, text, err):
+        keyword = 'yofication'
         tokens = text.split(' ')
-        phrase = []
         for token in tokens:
             if token in self.yo_dict:
-                text = text.replace(token, self.yo_dict[token])
-        return text
+                new_token = self.yo_dict[token]
+                text = text.replace(token, new_token)
+                if keyword not in err.keys():
+                     err[keyword] = []
+                err[keyword].append(token + ' > ' + new_token)
+        return text, err
 
 
-    # Abbreviation
-    def abbreviator(self, text):
-        words = re.findall(r"\b[а-яёА-ЯË]{1,}\b", text)
-        caps_list = re.findall(r"\b[А-ЯË]{2,}\b", text)
-        restricted_abbs = []
-        for abb in words:
-            if abb.upper() in self.bad_abb_list:
-                restricted_abbs.append(abb.upper())
-            elif abb.upper() in self.abb_dict.keys():
-                text = text.replace(abb, self.abb_dict[abb.upper()])
-            elif abb.upper() in self.all_abb_list:
-                text = text.replace(abb, abb.upper())
-            elif abb in caps_list:
-                text = text.replace(abb, abb.lower())
-        if restricted_abbs:
-            text = 'Запещенные аббревиатуры:'
-            for abb in restricted_abbs:
-                text += ' ' + abb + ','
-            text = text[:-1]
-        return text
+    # Max len 250 symbols
+    def check_max_len(self, text, err):
+        keyword = 'max_len'
+        if len(text) > 250:
+            ans = 'Превышена максимальная длина текста: входная последовательность {} символов при максимальной длине в 250'.format(len(text))
+            if keyword not in err.keys():
+                err[keyword] = []
+            err[keyword].append(ans)
+        return err
 
-    
+
     # Remove empty strings
-    def remove_empty(self, text):
-        return re.sub(r'[\n]{2,}', '\n', text)
+    def remove_empty(self, text, err):
+        keyword = 'empty_string'
+        text_clean = re.sub(r'[\n]{2,}', '\n', text)
+        if text != text_clean:
+            if keyword not in err.keys():
+                err[keyword] = []
+            err[keyword].append('remove empty string')
+        text = text_clean
+        return text, err
 
 
     # Remove endpoints
-    def remove_endpoints(self, text):
+    def remove_endpoint(self, text, err):
+        keyword = 'endpoint'
         sentenses = []
         for sent in text.split('\n'):
             if len(sent) > 0:
                 if sent[-1] == '.':
                     sent = sent[:-1]
                 sentenses.append(sent)
-        return '\n'.join(sentenses)
+        text_clean = '\n'.join(sentenses)
+        if text != text_clean:
+            if keyword not in err.keys():
+                err[keyword] = []
+            err[keyword].append('remove endpoint')
+        text = text_clean
+        return text, err
 
+    # Abbreviation
+    def abbreviator(self, clean_text, text, err, diff):
+        keyword = 'abbreviations'
+        words = re.findall(r"\b[а-яёА-ЯË]{1,}\b", text)
+        caps_list = re.findall(r"\b[А-ЯË]{2,}\b", text)
+        for abb in words:
+            if abb.upper() in self.bad_abb_list:
+                err = self._add_err(err, keyword, 'restricted abbreviation', abb.upper())
+                diff = self._highlight(diff, clean_text, abb)
+            elif abb.upper() in self.abb_dict.keys():
+                if abb[0].isupper():
+                    text = text.replace(abb, self.abb_dict[abb.upper()].capitalize())
+                else:
+                    text = text.replace(abb, self.abb_dict[abb.upper()])
+                err = self._add_err(err, keyword, abb, self.abb_dict[abb.upper()])
+                diff = self._highlight(diff, clean_text, abb)
+            elif abb.upper() in self.all_abb_list:
+                text = text.replace(abb, abb.upper())
+                if abb != abb.upper():
+                    err = self._add_err(err, keyword, abb, abb.upper())
+                    diff = self._highlight(diff, clean_text, abb)
+            elif abb in caps_list:
+                text = text.replace(abb, abb.lower())
+                err = self._add_err(err, keyword, abb, abb.lower())
+                diff = self._highlight(diff, clean_text, abb)
+        return text, err, diff
+
+    
+    def _highlight(self, diff, text, abb):
+        start = text.lower().find(abb.lower())
+        stop = start + len(abb)
+        diff[start:stop] = ['-'] * len(abb)
+        return diff
+
+
+    def _add_err(self, err, keyword, sent_a, sent_b):
+        if keyword not in err.keys():
+            err[keyword] = []
+        err[keyword].append(sent_a + ' > ' + sent_b)
+        return err
 
     def _get_abb_lists(self, abb_dict_path, all_abb_list_path, bad_abb_list_path):
         # get abb dict

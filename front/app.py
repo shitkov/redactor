@@ -1,10 +1,11 @@
+# export FLASK_APP=app.py
+# python3 -m flask run --host=0.0.0.0
 from flask import Flask
 from flask import render_template, flash, redirect
 from flask_wtf import FlaskForm
 from wtforms import TextAreaField, SubmitField
 import requests
 import json
-import difflib
 
 app = Flask(__name__)
 
@@ -20,21 +21,23 @@ def redact():
     text = form.text.data
     if text:
         data = {'payload': str(text)}
-        rqst = requests.post('http://back/app', data=json.dumps(data)).content
+        # rqst = requests.post('http://back/app', data=json.dumps(data)).content
+        rqst = requests.post('http://0.0.0.0/app', data=json.dumps(data)).content
         ans = json.loads(rqst.decode('utf-8'))['payload']
         message = {
-            'text': ans.replace('\n', '<br>'),
-            'diff': create_diff(text, ans).replace('\n', '<br>')
+            'text': ans['text'].replace('\n', '<br>'),
+            'diff': highlight_diff(text, ans['diff']).replace('\n', '<br>'),
+            'err': ans['err']
         }
         flash(message)
         print(ans)
     return render_template('redact.html', title='Redactor', form=form)
 
-def create_diff(a, b):
+def highlight_diff(clean, diff):
     ans = ''
-    for s in enumerate(difflib.ndiff(a, b)):
-        if s[1][0] == ' ':
-            ans += str(s[1][-1])
-        elif s[1][0] == '-':
-            ans += '<span style="background: violet">' + str(s[1][-1]) + '</span>'
+    for i, symb in enumerate(diff):
+        if symb == ' ':
+            ans += clean[i]
+        elif symb == '-':
+            ans += '<span style="background: violet">' + clean[i]  + '</span>'
     return ans
