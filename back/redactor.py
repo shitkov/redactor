@@ -37,19 +37,27 @@ class Redactor:
 
 
     # Speller
-    def spellchecker(text, err):
+    def spellchecker(self, text, err):
         keyword = 'spellcheck'
         text_clean = re.sub('[^а-яёА-ЯË ]', ' ', str(text))
         text_clean = re.sub(r" +", " ", text_clean).strip()
         text_clean.strip()
+        text_checked = self.speller.spelled(text_clean)
         words = text_clean.split(' ')
+        words_checked_full = text_checked.split(' ')
         words_checked = [self.speller.spelled(word) for word in words]
-        for word, cword in zip(words, words_checked):
-            if word != cword:
-                text = text.replace(word, cword)
-                if keyword not in err.keys():
-                    err[keyword] = []
-                err[keyword].append(word + ' > ' + cword)
+        for word, cword, cword_full in zip(words, words_checked, words_checked_full):
+            if len(word) > 3:
+                if word != cword:
+                    text = text.replace(word, cword)
+                    if keyword not in err.keys():
+                        err[keyword] = []
+                    err[keyword].append(word + ' > ' + cword)
+                elif word != cword_full:
+                    text = text.replace(word, cword_full)
+                    if keyword not in err.keys():
+                        err[keyword] = []
+                    err[keyword].append(word + ' > ' + cword_full)
         return text, err
 
     def get_fixes_diff(self, clean, text):
