@@ -21,8 +21,8 @@ def redact():
     text = form.text.data
     if text:
         data = {'payload': str(text)}
-        # rqst = requests.post('http://back/app', data=json.dumps(data)).content
-        rqst = requests.post('http://0.0.0.0/app', data=json.dumps(data)).content
+        rqst = requests.post('http://back/app', data=json.dumps(data)).content
+        # rqst = requests.post('http://0.0.0.0/app', data=json.dumps(data)).content
         ans = json.loads(rqst.decode('utf-8'))['payload']
         message = {
             'text': ans['text'].replace('\n', '<br>'),
