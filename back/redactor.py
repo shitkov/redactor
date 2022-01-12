@@ -9,7 +9,6 @@ class Redactor:
 
     def __init__(self, yo_dict_path, abb_dict_path, all_abb_list_path, bad_abb_list_path):
         self.yo_dict = self._create_dict(yo_dict_path)
-        # self.speller = YandexSpeller(lang='ru', check_yo=True)
         self.processor = Processor([GEO])
         self.abb_dict = None
         self.all_abb_list = None
@@ -20,7 +19,6 @@ class Redactor:
     def run(self, text):
         err = {}
         clean = text
-        # fixes
         text, err = self.geo_speller(text, err)
         text, err = self.hyphen_replacement(text, err)
         text, err = self.replace_quotes(text, err)
