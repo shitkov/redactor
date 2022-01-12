@@ -1,6 +1,7 @@
 import re
 import json
 import difflib
+from pyaspeller import YandexSpeller
 from pullenti_wrapper.processor import Processor, GEO
 
 
@@ -10,6 +11,7 @@ class Redactor:
     def __init__(self, yo_dict_path, abb_dict_path, all_abb_list_path, bad_abb_list_path):
         self.yo_dict = self._create_dict(yo_dict_path)
         self.processor = Processor([GEO])
+        self.speller = YandexSpeller(lang='ru')
         self.abb_dict = None
         self.all_abb_list = None
         self.bad_abb_list = None
@@ -19,6 +21,7 @@ class Redactor:
     def run(self, text):
         err = {}
         clean = text
+        text, err = self.spellchecker(text, err)
         text, err = self.geo_speller(text, err)
         text, err = self.hyphen_replacement(text, err)
         text, err = self.replace_quotes(text, err)
@@ -32,6 +35,22 @@ class Redactor:
         err = self.check_max_len(text, err)
         return {'text': text, 'diff': diff, 'err': err}
 
+
+    # Speller
+    def spellchecker(text, err):
+        keyword = 'spellcheck'
+        text_clean = re.sub('[^а-яёА-ЯË ]', ' ', str(text))
+        text_clean = re.sub(r" +", " ", text_clean).strip()
+        text_clean.strip()
+        words = text_clean.split(' ')
+        words_checked = [self.speller.spelled(word) for word in words]
+        for word, cword in zip(words, words_checked):
+            if word != cword:
+                text = text.replace(word, cword)
+                if keyword not in err.keys():
+                    err[keyword] = []
+                err[keyword].append(word + ' > ' + cword)
+        return text, err
 
     def get_fixes_diff(self, clean, text):
         diff = []
